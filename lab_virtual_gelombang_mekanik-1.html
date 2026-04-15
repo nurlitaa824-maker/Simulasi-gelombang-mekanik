@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Virtual Gelombang Mekanik – Simulasi Interaktif HTML5</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap');
+
+  :root {
+    --bg:        #050d1a;
+    --panel:     #0a1628;
+    --border:    #1a3a5c;
+    --accent1:   #00e5ff;   /* transversal – cyan */
+    --accent2:   #ff6d00;   /* longitudinal – amber */
+    --accent3:   #69ff47;   /* hijau aktif */
+    --text:      #cce8ff;
+    --muted:     #4a7fa8;
+    --radius:    12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Rajdhani', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── grid background ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── layout ── */
+  .wrapper { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  /* ── header ── */
+  header { text-align: center; margin-bottom: 32px; }
+  header .badge {
+    display: inline-block;
+    font-family: 'Orbitron', monospace;
+    font-size: .65rem; letter-spacing: .15em;
+    color: var(--accent1); border: 1px solid var(--accent1);
+    padding: 3px 12px; border-radius: 99px; margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  header h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1.2rem, 3.5vw, 2rem);
+    font-weight: 900; line-height: 1.2;
+    background: linear-gradient(90deg, var(--accent1), #fff, var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  header p { font-size: .95rem; color: var(--muted); max-width: 680px; margin: 0 auto; }
+
+  /* ── tabs ── */
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab-btn {
+    font-family: 'Orbitron', monospace;
+    font-size: .72rem; letter-spacing: .08em;
+    padding: 8px 18px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--panel); color: var(--muted);
+    transition: all .25s;
+  }
+  .tab-btn:hover { border-color: var(--accent1); color: var(--accent1); }
+  .tab-btn.active { background: var(--accent1); color: var(--bg); border-color: var(--accent1); font-weight: 700; }
+
+  /* ── tab content ── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── canvas cards ── */
+  .canvas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:640px){ .canvas-grid { grid-template-columns: 1fr; } }
+
+  .wave-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+  }
+  .wave-card-header {
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .wave-card-header h3 { font-family: 'Orbitron', monospace; font-size: .78rem; letter-spacing: .05em; }
+  .wave-card canvas { display: block; width: 100%; }
+  .formula-tag {
+    position: absolute; bottom: 8px; right: 10px;
+    font-family: 'Orbitron', monospace; font-size: .6rem;
+    color: var(--muted); letter-spacing: .04em;
+  }
+
+  /* ── comparison (fullwidth) ── */
+  .compare-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .compare-card canvas { display: block; width: 100%; }
+  .compare-card-header {
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .compare-card-header h3 { font-family: 'Orbitron', monospace; font-size: .78rem; }
+
+  /* ── controls ── */
+  .controls {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-top: 16px;
+  }
+  .controls h4 { font-family: 'Orbitron', monospace; font-size: .7rem; letter-spacing: .08em; color: var(--muted); margin-bottom: 12px; }
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .slider-row label { font-size: .85rem; min-width: 120px; color: var(--text); }
+  .slider-row input[type=range] {
+    flex: 1; min-width: 140px; accent-color: var(--accent1);
+    height: 4px; cursor: pointer;
+  }
+  .slider-row .val {
+    font-family: 'Orbitron', monospace; font-size: .8rem;
+    color: var(--accent3); min-width: 52px; text-align: right;
+  }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .btn {
+    font-family: 'Orbitron', monospace; font-size: .7rem; letter-spacing: .08em;
+    padding: 8px 20px; border-radius: 8px; cursor: pointer; border: none;
+    transition: all .2s;
+  }
+  .btn-primary { background: var(--accent1); color: var(--bg); font-weight: 700; }
+  .btn-primary:hover { background: #fff; }
+  .btn-secondary { background: transparent; color: var(--accent2); border: 1px solid var(--accent2); }
+  .btn-secondary:hover { background: var(--accent2); color: var(--bg); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text); }
+
+  /* ── miskonsepsi panel ── */
+  .misconception-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 14px; }
+  .mc-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+    transition: border-color .25s;
+  }
+  .mc-card:hover { border-color: var(--accent2); }
+  .mc-tag {
+    display: inline-block; font-size: .6rem; font-family: 'Orbitron', monospace;
+    letter-spacing: .1em; padding: 2px 8px; border-radius: 99px;
+    margin-bottom: 8px;
+  }
+  .mc-tag.wrong { background: rgba(255,50,50,.15); color: #ff5555; border: 1px solid #ff5555; }
+  .mc-tag.right { background: rgba(105,255,71,.12); color: var(--accent3); border: 1px solid var(--accent3); }
+  .mc-card h4 { font-size: .9rem; font-weight: 600; margin-bottom: 6px; }
+  .mc-card p { font-size: .82rem; color: var(--muted); line-height: 1.5; }
+
+  /* ── materi ── */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:580px){ .info-grid { grid-template-columns: 1fr; } }
+  .info-card {
+    border-radius: var(--radius); padding: 18px;
+    border-left: 3px solid;
+  }
+  .info-card.transversal { background: rgba(0,229,255,.06); border-color: var(--accent1); }
+  .info-card.longitudinal { background: rgba(255,109,0,.06); border-color: var(--accent2); }
+  .info-card h3 { font-family: 'Orbitron', monospace; font-size: .8rem; margin-bottom: 10px; }
+  .info-card ul { padding-left: 16px; font-size: .85rem; color: var(--muted); line-height: 1.8; }
+  .info-card li::marker { color: var(--accent1); }
+  .info-card.longitudinal li::marker { color: var(--accent2); }
+
+  .mc-card.transversal-card { border-left: 3px solid var(--accent1); }
+  .mc-card.longitudinal-card { border-left: 3px solid var(--accent2); }
+
+  /* ── quiz ── */
+  .quiz-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 14px;
+  }
+  .quiz-q { font-size: .95rem; font-weight: 600; margin-bottom: 12px; }
+  .quiz-options { display: grid; gap: 8px; }
+  .quiz-opt {
+    padding: 10px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg);
+    font-size: .88rem; transition: all .2s; text-align: left; color: var(--text);
+  }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent1); color: var(--accent1); }
+  .quiz-opt.correct { background: rgba(105,255,71,.15); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-opt.wrong   { background: rgba(255,50,50,.12); border-color: #ff5555; color: #ff5555; }
+  .quiz-feedback { margin-top: 10px; font-size: .83rem; padding: 8px 12px; border-radius: 6px; }
+  .quiz-feedback.ok  { background: rgba(105,255,71,.1); color: var(--accent3); }
+  .quiz-feedback.err { background: rgba(255,50,50,.1); color: #ff7777; }
+
+  .score-bar { text-align: center; padding: 20px; }
+  .score-bar .big { font-family: 'Orbitron', monospace; font-size: 2.5rem; color: var(--accent1); }
+  .score-bar p { color: var(--muted); margin-top: 4px; }
+
+  /* ── footer ── */
+  footer { text-align: center; padding: 24px 0 12px; font-size: .75rem; color: var(--muted); }
+  footer span { color: var(--accent1); }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="badge">Lab Virtual · Gelombang Mekanik</div>
+    <h1>Rekayasa Ide: Simulasi Interaktif<br>Gelombang Mekanik Berbasis HTML5</h1>
+    <p>Mengatasi miskonsepsi siswa pada materi gelombang transversal vs longitudinal melalui visualisasi animasi real-time yang dapat dikontrol secara mandiri.</p>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('simulasi')">⚡ Simulasi</button>
+    <button class="tab-btn" onclick="switchTab('perbandingan')">🔀 Perbandingan</button>
+    <button class="tab-btn" onclick="switchTab('materi')">📖 Materi</button>
+    <button class="tab-btn" onclick="switchTab('kuis')">🧪 Kuis</button>
+  </div>
+
+  <!-- ════════════════ TAB: SIMULASI ════════════════ -->
+  <div id="tab-simulasi" class="tab-panel active">
+    <div class="canvas-grid">
+
+      <!-- Transversal -->
+      <div class="wave-card">
+        <div class="wave-card-header">
+          <div class="dot" style="background:var(--accent1)"></div>
+          <h3 style="color:var(--accent1)">Gelombang Transversal</h3>
+        </div>
+        <canvas id="cvTransversal" height="200"></canvas>
+        <div class="formula-tag">y = A·sin(kx − ωt)</div>
+      </div>
+
+      <!-- Longitudinal -->
+      <div class="wave-card">
+        <div class="wave-card-header">
+          <div class="dot" style="background:var(--accent2)"></div>
+          <h3 style="color:var(--accent2)">Gelombang Longitudinal</h3>
+        </div>
+        <canvas id="cvLongitudinal" height="200"></canvas>
+        <div class="formula-tag">s(x,t) = A·sin(kx − ωt)</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <h4>⚙ PANEL KONTROL</h4>
+      <div class="slider-row">
+        <label>Amplitudo (A)</label>
+        <input type="range" id="sAmp" min="5" max="60" value="35" oninput="updateSlider(this,'vAmp',' m')">
+        <span class="val" id="vAmp">35 m</span>
+      </div>
+      <div class="slider-row">
+        <label>Frekuensi (f)</label>
+        <input type="range" id="sFreq" min="1" max="8" value="2" step="0.5" oninput="updateSlider(this,'vFreq',' Hz')">
+        <span class="val" id="vFreq">2 Hz</span>
+      </div>
+      <div class="slider-row">
+        <label>Panjang Gelombang (λ)</label>
+        <input type="range" id="sLambda" min="40" max="180" value="100" oninput="updateSlider(this,'vLambda',' m')">
+        <span class="val" id="vLambda">100 m</span>
+      </div>
+      <div class="slider-row">
+        <label>Kecepatan Rambat (v)</label>
+        <input type="range" id="sSpeed" min="0.5" max="4" step="0.1" value="1.5" oninput="updateSlider(this,'vSpeed',' m/s')">
+        <span class="val" id="vSpeed">1.5 m/s</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="toggleAnim()">⏯ Play / Pause</button>
+        <button class="btn btn-secondary" onclick="resetAll()">↺ Reset</button>
+        <button class="btn btn-ghost" onclick="toggleParticle()">● Tampilkan Partikel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ TAB: PERBANDINGAN ════════════════ -->
+  <div id="tab-perbandingan" class="tab-panel">
+    <div class="compare-card">
+      <div class="compare-card-header">
+        <div class="dot" style="background:var(--accent1)"></div>
+        <h3 style="color:var(--accent1)">Transversal</h3>
+        <span style="margin-left:auto;font-size:.75rem;color:var(--muted)">Getaran ⊥ Perambatan</span>
+      </div>
+      <canvas id="cvCmpT" height="130"></canvas>
+    </div>
+    <div class="compare-card">
+      <div class="compare-card-header">
+        <div class="dot" style="background:var(--accent2)"></div>
+        <h3 style="color:var(--accent2)">Longitudinal</h3>
+        <span style="margin-left:auto;font-size:.75rem;color:var(--muted)">Getaran ∥ Perambatan</span>
+      </div>
+      <canvas id="cvCmpL" height="130"></canvas>
+    </div>
+    <div class="controls">
+      <h4>⚙ KONTROL PERBANDINGAN</h4>
+      <div class="slider-row">
+        <label>Kecepatan Animasi</label>
+        <input type="range" id="sCmpSpeed" min="0.3" max="3" step="0.1" value="1" oninput="updateSlider(this,'vCmpSpeed','×')">
+        <span class="val" id="vCmpSpeed">1×</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="toggleCmp()">⏯ Play / Pause</button>
+        <button class="btn btn-ghost" onclick="toggleLabel()">🏷 Label Partikel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ TAB: MISKONSEPSI ════════════════ -->
+  <!-- ════════════════ TAB: MATERI ════════════════ -->
+  <div id="tab-materi" class="tab-panel">
+    <div class="info-grid">
+      <div class="info-card transversal">
+        <h3 style="color:var(--accent1)">🌊 Gelombang Transversal</h3>
+        <ul>
+          <li>Getaran partikel <strong>tegak lurus</strong> arah rambat
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Partikel bergerak naik–turun, sedangkan gelombang merambat ke samping.</span>
+          </li>
+          <li>Contoh: gelombang tali, gelombang air, cahaya
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Tali dan air termasuk mekanik (butuh medium), cahaya tidak butuh medium.</span>
+          </li>
+          <li>Tidak selalu memerlukan medium
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Gelombang elektromagnetik (seperti cahaya) dapat merambat di ruang hampa.</span>
+          </li>
+          <li>Persamaan: <em>y = A sin(kx − ωt)</em>
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Menunjukkan hubungan antara amplitudo, posisi, dan waktu pada gelombang.</span>
+          </li>
+          <li>Memiliki puncak (crest) dan lembah (trough)
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Puncak adalah titik tertinggi, lembah titik terendah gelombang.</span>
+          </li>
+          <li>Dapat mengalami polarisasi
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Arah getar gelombang bisa dibatasi (ciri khas gelombang transversal).</span>
+          </li>
+        </ul>
+      </div>
+      <div class="info-card longitudinal">
+        <h3 style="color:var(--accent2)">〰 Gelombang Longitudinal</h3>
+        <ul>
+          <li>Getaran partikel <strong>sejajar</strong> arah rambat
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Partikel bergerak maju–mundur searah rambat gelombang.</span>
+          </li>
+          <li>Contoh: gelombang bunyi, gelombang seismik P
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Keduanya memiliki pola rapatan dan renggangan.</span>
+          </li>
+          <li>Dapat merambat di padat, cair, gas
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Karena merambat melalui perubahan tekanan dalam medium.</span>
+          </li>
+          <li>Memiliki rapatan (kompresi) dan renggangan (rarefaksi)
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Rapatan: partikel mendekat, renggangan: partikel menjauh.</span>
+          </li>
+          <li>Tidak dapat mengalami polarisasi
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Karena arah getarnya sejajar dengan arah rambat.</span>
+          </li>
+          <li>Kecepatan bunyi di udara ± 340 m/s
+            <br><span style="font-size:.78rem;color:var(--muted)">→ Nilai mendekati, tergantung suhu (sekitar 343 m/s pada 20°C).</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="controls" style="margin-top:16px">
+      <h4>📐 BESARAN GELOMBANG</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:10px">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px">
+          <div style="font-family:'Orbitron',monospace;font-size:.65rem;color:var(--muted);margin-bottom:4px">PERIODE</div>
+          <div style="font-size:1.1rem;color:var(--accent1)">T = 1/f</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:4px">Satuan: sekon (s)</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px">
+          <div style="font-family:'Orbitron',monospace;font-size:.65rem;color:var(--muted);margin-bottom:4px">KEL. SUDUT</div>
+          <div style="font-size:1.1rem;color:var(--accent1)">ω = 2πf</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:4px">Satuan: rad/s</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px">
+          <div style="font-family:'Orbitron',monospace;font-size:.65rem;color:var(--muted);margin-bottom:4px">BILANGAN GELOMBANG</div>
+          <div style="font-size:1.1rem;color:var(--accent1)">k = 2π/λ</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:4px">Satuan: rad/m</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px">
+          <div style="font-family:'Orbitron',monospace;font-size:.65rem;color:var(--muted);margin-bottom:4px">KECEPATAN RAMBAT</div>
+          <div style="font-size:1.1rem;color:var(--accent2)">v = f × λ</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:4px">Satuan: m/s</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ TAB: KUIS ════════════════ -->
+  <div id="tab-kuis" class="tab-panel">
+    <div id="quizContainer"></div>
+    <div class="score-bar" id="scoreBar" style="display:none">
+      <div class="big" id="scoreNum"></div>
+      <p id="scoreTxt"></p>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="resetQuiz()">↺ Ulangi Kuis</button>
+    </div>
+  </div>
+
+</div><!-- /wrapper -->
+
+<footer>
+  Lab Virtual Gelombang Mekanik · Berbasis <span>HTML5 Canvas</span> · Dibuat untuk media pembelajaran interaktif
+</footer>
+
+<!-- ════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════ -->
+<script>
+/* ── STATE ── */
+let animRunning = true;
+let cmpRunning  = true;
+let showParticle = true;
+let showLabel    = true;
+let t = 0;
+let cmpT = 0;
+
+/* ── CANVAS SETUP ── */
+function setupCanvas(id) {
+  const cv = document.getElementById(id);
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.parentElement.clientWidth;
+  const h = parseInt(cv.getAttribute('height'));
+  cv.width  = w * dpr;
+  cv.height = h * dpr;
+  cv.style.width  = w + 'px';
+  cv.style.height = h + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { ctx, w, h };
+}
+
+/* ── PARAMS ── */
+function getParams() {
+  return {
+    A:      +document.getElementById('sAmp').value,
+    freq:   +document.getElementById('sFreq').value,
+    lambda: +document.getElementById('sLambda').value,
+    speed:  +document.getElementById('sSpeed').value,
+  };
+}
+function getCmpSpeed() {
+  return +document.getElementById('sCmpSpeed').value;
+}
+
+/* ── DRAW TRANSVERSAL ── */
+function drawTransversal(ctx, w, h, t, A, lambda, freq) {
+  ctx.clearRect(0, 0, w, h);
+
+  // centre line
+  ctx.strokeStyle = 'rgba(0,229,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+
+  const k  = (2 * Math.PI) / lambda;
+  const om = 2 * Math.PI * freq;
+
+  // wave
+  ctx.beginPath();
+  ctx.strokeStyle = '#00e5ff';
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 8;
+  for (let x = 0; x <= w; x++) {
+    const y = h/2 - A * Math.sin(k * x - om * t);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // particles
+  if (showParticle) {
+    const step = lambda / 3;
+    for (let x = step/2; x < w; x += step) {
+      const y = h/2 - A * Math.sin(k * x - om * t);
+      // vertical arrow
+      ctx.strokeStyle = 'rgba(255,255,100,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, h/2);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      // dot
+      ctx.beginPath();
+      ctx.fillStyle = '#ffff55';
+      ctx.arc(x, y, 4, 0, 2*Math.PI);
+      ctx.fill();
+    }
+  }
+
+  // labels
+  ctx.fillStyle = 'rgba(0,229,255,0.6)';
+  ctx.font = '11px Rajdhani, sans-serif';
+  ctx.fillText('Arah rambat →', 8, 14);
+  ctx.fillStyle = 'rgba(255,255,100,0.6)';
+  ctx.fillText('↕ Arah getaran', 8, h - 8);
+}
+
+/* ── DRAW LONGITUDINAL ── */
+// Rumus: s(x,t) = A·sin(kx − ωt)
+function drawLongitudinal(ctx, w, h, t, A, lambda, freq) {
+  ctx.clearRect(0, 0, w, h);
+
+  const numPart = Math.floor(w / 14);
+  const baseX   = Array.from({length: numPart}, (_, i) => (i + 0.5) * (w / numPart));
+  const k  = (2 * Math.PI) / lambda;
+  const om = 2 * Math.PI * freq;
+  const cx = h / 2;
+
+  // draw compressions / rarefactions first (background bands)
+  for (let x = 0; x <= w; x++) {
+    const disp = A * Math.sin(k * x - om * t);
+    // density: derivative of displacement ≈ compression if negative
+    const compression = -Math.cos(k * x - om * t); // 0..1
+    const alpha = (compression + 1) / 2 * 0.22;
+    ctx.fillStyle = `rgba(255,109,0,${alpha})`;
+    ctx.fillRect(x, cx - 28, 1, 56);
+  }
+
+  // centre line
+  ctx.strokeStyle = 'rgba(255,109,0,0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, cx); ctx.lineTo(w, cx); ctx.stroke();
+
+  // particles
+  baseX.forEach((bx) => {
+    const disp = A * Math.sin(k * bx - om * t);
+    const px = bx + disp;
+    // trail line
+    ctx.strokeStyle = 'rgba(255,150,50,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx, cx);
+    ctx.lineTo(px, cx);
+    ctx.stroke();
+    // dot
+    ctx.beginPath();
+    ctx.fillStyle = '#ff9932';
+    ctx.shadowColor = '#ff6d00';
+    ctx.shadowBlur = 6;
+    ctx.arc(px, cx, 5, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+
+  // labels
+  ctx.fillStyle = 'rgba(255,109,0,0.7)';
+  ctx.font = '11px Rajdhani, sans-serif';
+  ctx.fillText('Arah rambat & getaran →', 8, 14);
+  ctx.fillStyle = 'rgba(255,170,80,0.6)';
+  ctx.fillText('Rapatan                       Renggangan', 8, h - 8);
+}
+
+/* ── DRAW COMPARE TRANSVERSAL ── */
+function drawCmpT(ctx, w, h, t) {
+  const A = 40, lambda = 120, freq = 1.5;
+  drawTransversal(ctx, w, h, t, A, lambda, freq);
+}
+
+/* ── DRAW COMPARE LONGITUDINAL ── */
+function drawCmpL(ctx, w, h, t) {
+  const A = 18, lambda = 100, freq = 1.5;
+  drawLongitudinal(ctx, w, h, t, A, lambda, freq);
+}
+
+/* ── ANIMATION LOOP ── */
+let rafId;
+function loop() {
+  const dt = 0.016;
+  const p = getParams();
+
+  // Tab simulasi
+  {
+    const cv = document.getElementById('cvTransversal');
+    const dpr = window.devicePixelRatio || 1;
+    const ww = cv.parentElement.clientWidth;
+    const hh = parseInt(cv.getAttribute('height')/1)||200;
+    const ctx = cv.getContext('2d');
+    drawTransversal(ctx, cv.width/dpr, cv.height/dpr, t, p.A, p.lambda, p.freq);
+  }
+  {
+    const cv = document.getElementById('cvLongitudinal');
+    const dpr = window.devicePixelRatio || 1;
+    const ctx = cv.getContext('2d');
+    drawLongitudinal(ctx, cv.width/dpr, cv.height/dpr, t, p.A*0.5, p.lambda, p.freq);
+  }
+
+  // Tab perbandingan
+  {
+    const cv = document.getElementById('cvCmpT');
+    const dpr = window.devicePixelRatio || 1;
+    const ctx = cv.getContext('2d');
+    drawCmpT(ctx, cv.width/dpr, cv.height/dpr, cmpT);
+  }
+  {
+    const cv = document.getElementById('cvCmpL');
+    const dpr = window.devicePixelRatio || 1;
+    const ctx = cv.getContext('2d');
+    drawCmpL(ctx, cv.width/dpr, cv.height/dpr, cmpT);
+  }
+
+  if (animRunning) t += dt * p.speed;
+  if (cmpRunning)  cmpT += dt * getCmpSpeed();
+
+  rafId = requestAnimationFrame(loop);
+}
+
+/* ── INIT CANVASES ── */
+function initCanvases() {
+  ['cvTransversal','cvLongitudinal','cvCmpT','cvCmpL'].forEach(id => {
+    const cv = document.getElementById(id);
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.parentElement.clientWidth || 480;
+    const h = parseInt(cv.getAttribute('height'));
+    cv.width  = w * dpr;
+    cv.height = h * dpr;
+    cv.style.width  = w + 'px';
+    cv.style.height = h + 'px';
+    cv.getContext('2d').scale(dpr, dpr);
+  });
+}
+
+/* ── CONTROLS ── */
+function updateSlider(el, valId, unit) {
+  document.getElementById(valId).textContent = el.value + unit;
+}
+function toggleAnim()    { animRunning = !animRunning; }
+function toggleCmp()     { cmpRunning  = !cmpRunning; }
+function toggleParticle(){ showParticle = !showParticle; }
+function toggleLabel()   { showLabel   = !showLabel; }
+function resetAll() {
+  t = 0;
+  document.getElementById('sAmp').value    = 35;
+  document.getElementById('sFreq').value   = 2;
+  document.getElementById('sLambda').value = 100;
+  document.getElementById('sSpeed').value  = 1.5;
+  document.getElementById('vAmp').textContent    = '35 m';
+  document.getElementById('vFreq').textContent   = '2 Hz';
+  document.getElementById('vLambda').textContent = '100 m';
+  document.getElementById('vSpeed').textContent  = '1.5 m/s';
+}
+
+/* ── TABS ── */
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  setTimeout(initCanvases, 50);
+}
+
+/* ── QUIZ ── */
+const questions = [
+  {
+    q: "Saat sebuah gelombang mekanik merambat melalui suatu medium (seperti tali atau slinki), apa yang sebenarnya dipindahkan dari satu tempat ke tempat lain?",
+    opts: ["Partikel-partikel medium", "Massa medium", "Energi gelombang", "Bentuk fisik medium", "Kecepatan partikel"],
+    ans: 2,
+    fb: "✅ Benar! Yang dipindahkan adalah energi gelombang. Partikel medium hanya bergetar di tempatnya dan tidak ikut berpindah.",
+    fbe: "❌ Salah. Gelombang mekanik memindahkan energi, bukan partikel medium. Partikel hanya bergetar di sekitar posisi setimbangnya."
+  },
+  {
+    q: "Perbedaan mendasar yang paling tepat antara gelombang transversal dan gelombang longitudinal terletak pada...",
+    opts: ["Cepat rambat gelombangnya di udara", "Arah rambat terhadap arah getar partikel mediumnya", "Kebutuhan akan medium perantara untuk merambat", "Besaran frekuensi dan amplitudonya", "Jumlah energi yang dibawanya"],
+    ans: 1,
+    fb: "✅ Tepat! Perbedaan utamanya adalah arah getar partikel: tegak lurus (transversal) atau sejajar (longitudinal) terhadap arah rambat.",
+    fbe: "❌ Salah. Perbedaan mendasar keduanya adalah arah getaran partikel medium terhadap arah rambat gelombang."
+  },
+  {
+    q: "Jika frekuensi sebuah gelombang mekanik yang merambat pada medium tertentu diperbesar menjadi dua kali lipat, sedangkan sifat medium tidak diubah, apa yang akan terjadi pada cepat rambat gelombang tersebut?",
+    opts: ["Menjadi dua kali lipat lebih cepat", "Menjadi setengah dari semula", "Tetap sama (tidak berubah)", "Menjadi empat kali lipat lebih cepat", "Bergantung pada perubahan amplitudonya"],
+    ans: 2,
+    fb: "✅ Benar! Cepat rambat gelombang ditentukan oleh sifat medium, bukan frekuensi. Jika medium tidak berubah, v tetap sama.",
+    fbe: "❌ Salah. Cepat rambat gelombang bergantung pada sifat medium, bukan frekuensi. Jika medium tidak berubah, v tetap sama."
+  },
+  {
+    q: "Berdasarkan simulasi, pada gelombang longitudinal, representasi satu panjang gelombang (λ) didefinisikan sebagai jarak antara...",
+    opts: ["Titik setimbang ke titik simpangan terjauh", "Pusat rapatan ke pusat renggangan yang terdekat", "Sembarang dua titik partikel pada medium", "Dua pusat rapatan yang saling berdekatan (atau dua pusat renggangan yang berdekatan)", "Awal gelombang hingga ujung gelombang berhenti"],
+    ans: 3,
+    fb: "✅ Tepat! Satu panjang gelombang (λ) pada gelombang longitudinal adalah jarak antara dua rapatan berturutan atau dua renggangan berturutan.",
+    fbe: "❌ Salah. Satu panjang gelombang (λ) adalah jarak antara dua pusat rapatan yang berdekatan, atau dua pusat renggangan yang berdekatan."
+  },
+  {
+    q: "Di dalam panel kontrol simulasi, terdapat pengaturan (slider) untuk Amplitudo. Jika siswa memperbesar nilai amplitudo sebuah gelombang, besaran fisika apa yang secara langsung ikut membesar?",
+    opts: ["Cepat rambat gelombang", "Panjang gelombang", "Energi yang dibawa gelombang", "Frekuensi gelombang", "Periode gelombang"],
+    ans: 2,
+    fb: "✅ Benar! Energi gelombang berbanding lurus dengan kuadrat amplitudo (E ∝ A²). Memperbesar A langsung memperbesar energi.",
+    fbe: "❌ Salah. Yang ikut membesar ketika amplitudo diperbesar adalah energi yang dibawa gelombang, karena E ∝ A²."
+  },
+  {
+    q: "Perhatikan sebuah titik partikel berwarna kuning pada simulasi gelombang transversal. Saat puncak gelombang (titik tertinggi) tepat melewati partikel tersebut, bagaimana kecepatan vertikal sesaat dari partikel itu?",
+    opts: ["Bergerak ke atas dengan kecepatan maksimum", "Bergerak ke bawah dengan kecepatan maksimum", "Bergeraknya sama dengan cepat rambat gelombang (ke kanan)", "Nol (berhenti sesaat)", "Konstan dan tidak nol"],
+    ans: 3,
+    fb: "✅ Tepat! Di titik puncak (simpangan maksimum), partikel berbalik arah sehingga kecepatan vertikalnya sesaat bernilai nol.",
+    fbe: "❌ Salah. Saat di titik puncak (simpangan maksimum), kecepatan vertikal partikel adalah nol karena partikel sedang berbalik arah."
+  },
+  {
+    q: "Jika sebuah gelombang memiliki frekuensi (f) sebesar 2 Hz dan panjang gelombang (λ) sebesar 10 m, berapakah cepat rambat gelombang (v)?",
+    opts: ["5 m/s", "12 m/s", "20 m/s", "0,2 m/s", "8 m/s"],
+    ans: 2,
+    fb: "✅ Benar! Menggunakan rumus v = f × λ = 2 Hz × 10 m = 20 m/s.",
+    fbe: "❌ Salah. Gunakan rumus v = f × λ = 2 Hz × 10 m = 20 m/s."
+  },
+  {
+    q: "Pernyataan manakah yang BENAR dan menjadi syarat mutlak mengenai gelombang mekanik?",
+    opts: ["Dapat merambat dengan baik di ruang hampa udara (vakum)", "Cepat rambatnya selalu sama dengan kecepatan cahaya", "Selalu membutuhkan medium materi (padat, cair, atau gas) untuk merambat", "Mentransfer massa medium dari sumber getaran ke penerima", "Contoh utamanya adalah gelombang radio dan cahaya"],
+    ans: 2,
+    fb: "✅ Tepat! Gelombang mekanik SELALU membutuhkan medium materi untuk merambat. Ini adalah syarat mutlaknya.",
+    fbe: "❌ Salah. Syarat mutlak gelombang mekanik adalah membutuhkan medium materi (padat, cair, atau gas) untuk merambat."
+  },
+  {
+    q: "Dua titik pada sebuah gelombang berjalan dikatakan memiliki 'fase yang sama' (sefase) apabila...",
+    opts: ["Berada pada jarak kelipatan ganjil dari setengah panjang gelombang", "Jarak di antara keduanya adalah kelipatan bulat dari panjang gelombang (1λ, 2λ, dst)", "Memiliki amplitudo getaran yang berbeda-beda", "Satu titik berada di puncak gelombang dan titik lainnya berada di lembah gelombang", "Sedang bergerak dalam arah kecepatan yang saling berlawanan"],
+    ans: 1,
+    fb: "✅ Benar! Dua titik sefase jika jarak di antara keduanya adalah kelipatan bulat dari panjang gelombang (nλ, n = 1, 2, 3, ...).",
+    fbe: "❌ Salah. Dua titik sefase apabila jarak di antara keduanya adalah kelipatan bulat dari panjang gelombang (1λ, 2λ, dst)."
+  },
+  {
+    q: "Suatu gelombang transversal merambat dari kiri ke kanan. Jika kita memperhatikan partikel medium yang berada tepat di sebelah kanan sebuah puncak gelombang, ke arah manakah partikel tersebut akan segera bergerak sedetik kemudian?",
+    opts: ["Ke kanan mengikuti gelombang", "Ke kiri berlawanan arah gelombang", "Bergerak ke atas menuju puncak", "Bergerak ke bawah menuju posisi setimbang", "Tetap diam"],
+    ans: 2,
+    fb: "✅ Tepat! Partikel tepat di sebelah kanan puncak sedang berada di bawah puncak dan akan bergerak ke atas mengikuti puncak yang datang.",
+    fbe: "❌ Salah. Partikel di sebelah kanan puncak akan segera bergerak ke atas karena puncak gelombang akan melewatinya dari kiri."
+  }
+];
+
+let answered = [];
+function buildQuiz() {
+  answered = new Array(questions.length).fill(null);
+  const cont = document.getElementById('quizContainer');
+  cont.innerHTML = questions.map((q, i) => `
+    <div class="quiz-card" id="qc${i}">
+      <div class="quiz-q">${i+1}. ${q.q}</div>
+      <div class="quiz-options">
+        ${q.opts.map((o,j) => `
+          <button class="quiz-opt" id="qo${i}_${j}" onclick="answerQ(${i},${j})">${o}</button>
+        `).join('')}
+      </div>
+      <div class="quiz-feedback" id="qf${i}" style="display:none"></div>
+    </div>
+  `).join('') + `<div class="btn-row"><button class="btn btn-primary" onclick="submitQuiz()">✔ Lihat Nilai</button></div>`;
+  document.getElementById('scoreBar').style.display = 'none';
+}
+
+function answerQ(qi, oi) {
+  if (answered[qi] !== null) return;
+  answered[qi] = oi;
+  const q = questions[qi];
+  const fb = document.getElementById('qf'+qi);
+  const btnOpts = document.querySelectorAll(`#qc${qi} .quiz-opt`);
+  btnOpts.forEach(b => b.disabled = true);
+  btnOpts[q.ans].classList.add('correct');
+  if (oi !== q.ans) btnOpts[oi].classList.add('wrong');
+  fb.style.display = 'block';
+  fb.className = 'quiz-feedback ' + (oi === q.ans ? 'ok' : 'err');
+  fb.textContent = oi === q.ans ? q.fb : q.fbe;
+}
+
+function submitQuiz() {
+  const score = answered.filter((a,i) => a === questions[i].ans).length;
+  document.getElementById('scoreNum').textContent = score + ' / ' + questions.length;
+  const pct = Math.round(score / questions.length * 100);
+  let msg = pct === 100 ? '🏆 Sempurna! Kamu menguasai materi dengan sangat baik.' :
+            pct >= 80  ? '🎉 Bagus! Sedikit lagi kamu sempurna.' :
+            pct >= 60  ? '📖 Cukup baik. Ulangi simulasi untuk pemahaman lebih.' :
+            pct >= 40  ? '📚 Perlu belajar lebih. Coba pelajari kembali materinya.' :
+                         '💡 Masih banyak yang perlu dipelajari. Coba simulasi dan materi lagi ya!';
+  document.getElementById('scoreTxt').textContent = `(${pct}%) – ${msg}`;
+  document.getElementById('scoreBar').style.display = 'block';
+  document.getElementById('quizContainer').scrollIntoView({behavior:'smooth'});
+}
+
+function resetQuiz() { buildQuiz(); }
+
+/* ── RESIZE ── */
+window.addEventListener('resize', () => {
+  initCanvases();
+});
+
+/* ── START ── */
+window.addEventListener('load', () => {
+  initCanvases();
+  buildQuiz();
+  loop();
+});
+</script>
+</body>
+</html>
